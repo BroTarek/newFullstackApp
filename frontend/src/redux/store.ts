@@ -1,12 +1,14 @@
 import { configureStore, ThunkAction, Action } from '@reduxjs/toolkit';
 import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux';
-import productsReducer from '@/redux/productsSlice'; // Adjust path as needed
+
+import productsSliceReducer from '@/redux/productsSlice'; // Adjust path as needed
 import wishListReducer from '@/redux/wishListSlice'; // Adjust path as needed
 import cartReducer from '@/redux/cartSlice'; // Adjust path as needed
 
 export const store = configureStore({
   reducer: {
-    products: productsReducer,
+    
+    Product:productsSliceReducer,
     wishList: wishListReducer,
     Cart:cartReducer
   }

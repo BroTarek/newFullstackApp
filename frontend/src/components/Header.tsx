@@ -1,100 +1,111 @@
-import React, { useEffect, useState } from 'react'
-import { } from '@/app/types'
-
+import React, { useState } from 'react'
 import { FaCartShopping, FaHeart } from "react-icons/fa6";
 import { IoPersonCircleOutline } from "react-icons/io5"
 import ReactCountryFlag from "react-country-flag";
-import axios from 'axios';
-import { Category, SubCategory } from '@/app/types';
+import { useCategories, useSubCategories } from '@/hooks/useCategories';
+import Link from 'next/link';
+import Image from 'next/image';
+
 const Header = () => {
-    const [categoryData, setCategoryData] = useState<Category[]>([])
-    const [SubcategoryData, setSubCategoryData] = useState<SubCategory[]>([])
     const [subCategoriesToShow, setSubCategoriesToShow] = useState<string>('')
-    useEffect(() => {
+    const { data: categoryData = [], isLoading: isCategoriesLoading } = useCategories();
+    const { data: subCategoryData = [], isLoading: isSubCategoriesLoading } = useSubCategories(subCategoriesToShow);
 
-        const FetchCategoryData = async () => {
-            let Category = await axios.get('http://localhost:8000/api/v1/categories')
-            setCategoryData(Category.data.data)
-        }
-        FetchCategoryData()
-
-    }, [])
-
-    useEffect(() => {
-
-        const FetchSubCategoryData = async () => {
-            let SubCategory = await axios.get(`http://localhost:8000/api/v1/categories/${subCategoriesToShow}/subcategories`)
-            setSubCategoryData(SubCategory.data.data)
-        }
-        FetchSubCategoryData()
-    }, [subCategoriesToShow])
     return (
-        <div style={{width:"100%"}}>
-            <div className='Topheader'
-                style={{ backgroundColor: "yellowgreen", display: "flex", justifyContent: "space-between" }}>
+        <div className="w-full flex flex-col font-sans">
+            {/* Top Header */}
+            <div className="bg-slate-50 border-b p-4 flex items-center justify-between gap-4">
+                <Link href="/home" className="flex-shrink-0">
+                    <Image src="/globe.svg" alt="Logo" width={40} height={40} />
+                </Link>
 
-                <img src="/globe.svg" alt="Logo" width={40} height={40} />
-                <div style={{ display: "flex" }}>
-                    <ReactCountryFlag countryCode="US" style={{ margin: "20px 5px" }} svg />
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                    <ReactCountryFlag countryCode="US" svg />
                     <div>
-                        <p>deilver to </p>
-                        <button style={{ color: "GrayText" }}>NewYork</button>
+                        <p className="text-xs uppercase font-semibold text-slate-400">Deliver to</p>
+                        <button className="font-medium hover:text-blue-600">New York</button>
                     </div>
                 </div>
-                <input type="search" name="search" id="search" placeholder='what are you looking for?' />
-                <button>English</button>
-                <div
-                    style={{ backgroundColor: "yellow", display: "flex", justifyContent: "space-between", padding: "15px 5px" }}>
-                    <IoPersonCircleOutline />
-                    <p>signUp</p>
-                </div>
-                <FaHeart style={{ margin: "20px 5px" }} />
-                <FaCartShopping style={{ margin: "20px 5px" }} />
 
+                <div className="flex-grow max-w-2xl relative">
+                    <input
+                        type="search"
+                        placeholder="What are you looking for?"
+                        className="w-full bg-white border rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                </div>
+
+                <div className="flex items-center gap-6">
+                    <button className="text-sm font-medium hover:text-blue-600">English</button>
+
+                    <Link href="/login" className="flex items-center gap-1 hover:text-blue-600">
+                        <IoPersonCircleOutline size={24} />
+                        <span className="text-sm font-medium">Log In</span>
+                    </Link>
+
+                    <Link href="/wish-list" className="text-slate-600 hover:text-red-500 transition-colors">
+                        <FaHeart size={20} />
+                    </Link>
+
+                    <Link href="/cart" className="text-slate-600 hover:text-blue-600 transition-colors relative">
+                        <FaCartShopping size={20} />
+                    </Link>
+                </div>
             </div>
 
-
-            <div className='BottomHeader' style={{ backgroundColor: "green" }} onMouseLeave={() => setSubCategoriesToShow('')}>
-
-                <div className='CategoriesTitle' style={{ display: "flex", justifyContent: 'space-between' }}>
-                    {
-                        categoryData.map((category, i) =>
-
-                            <button key={i} onMouseEnter={() => {
-                                setSubCategoriesToShow(category._id)
-                            }
-                            } > {category.name}</button>
-
-                        )
-                    }
+            {/* Bottom Header (Categories) */}
+            <div
+                className="bg-white border-b relative"
+                onMouseLeave={() => setSubCategoriesToShow('')}
+            >
+                <div className="container mx-auto flex items-center gap-8 px-4 overflow-x-auto no-scrollbar">
+                    {isCategoriesLoading ? (
+                        <div className="py-3 text-sm text-slate-400">Loading categories...</div>
+                    ) : (
+                        categoryData.map((category) => (
+                            <button
+                                key={category._id}
+                                className={`py-3 text-sm font-medium whitespace-nowrap transition-colors border-b-2 hover:text-blue-600 ${subCategoriesToShow === category._id ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-600'
+                                    }`}
+                                onMouseEnter={() => setSubCategoriesToShow(category._id)}
+                            >
+                                {category.name}
+                            </button>
+                        ))
+                    )}
                 </div>
 
-                <div>
-                    {subCategoriesToShow &&
-                        <div style={{display:'flex' , justifyContent:"space-between"}}>
-                            <ul style={{ display: "flex", backgroundColor:"red",justifyContent: "space-between" }}>
-                                {
-                                    SubcategoryData.map((SubCategory, i) => (
-                                        <li key={i}>
-                                            {SubCategory.name}
-                                            <ul>
-                                                {categoryData.map((category, i) => (
-                                                    <li key={i}>
-                                                        {category.name}
-                                                    </li>
-                                                ))}
-                                            </ul>
+                {/* Mega Menu (Subcategories) */}
+                {subCategoriesToShow && (
+                    <div className="absolute top-full left-0 w-full bg-white shadow-xl border-t z-50 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="container mx-auto p-6 flex justify-between gap-8">
+                            <div className="flex-grow grid grid-cols-4 gap-8">
+                                {isSubCategoriesLoading ? (
+                                    <div className="col-span-4 text-slate-400 py-8">Loading...</div>
+                                ) : subCategoryData.length > 0 ? (
+                                    subCategoryData.map((sub) => (
+                                        <div key={sub._id}>
+                                            <h4 className="font-bold text-slate-900 mb-3">{sub.name}</h4>
+                                            {/* Sub-subcategory placeholder or more links can go here */}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="col-span-4 text-slate-400 py-8 italic text-sm">No subcategories found</div>
+                                )}
+                            </div>
 
-                                        </li>))
-                                }
-                            </ul>
-
-                            <img src={categoryData.find(cat => cat._id === subCategoriesToShow)?.image} alt=""
-                            style={{width:"5rem",height:"5rem"}}/>
+                            <div className="hidden lg:block w-48 h-48 relative rounded-xl overflow-hidden shadow-inner bg-slate-100">
+                                {categoryData.find(cat => cat._id === subCategoriesToShow)?.image && (
+                                    <img
+                                        src={categoryData.find(cat => cat._id === subCategoriesToShow)?.image}
+                                        alt="Category display"
+                                        className="w-full h-full object-cover"
+                                    />
+                                )}
+                            </div>
                         </div>
-
-                    }
-                </div>
+                    </div>
+                )}
             </div>
         </div>
     )

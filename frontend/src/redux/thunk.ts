@@ -7,6 +7,7 @@ axios.interceptors.request.use(config => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
   return config;
 });
 
@@ -78,16 +79,16 @@ export const addToCart = createAsyncThunk(
   'Cart/addToCart',
   async (payload: { productId: string; color: string }, thunkAPI) => {
     try {
+      
       const response = await axios.post('http://localhost:8000/api/v1/cart', {
         productId: payload.productId,
         color: payload.color
       });
-      console.log(await response.data.data)
+      
       return response.data.data
     }
     catch (error: any) {
       return thunkAPI.rejectWithValue(error.response?.data || error.message);
-
     }
   }
 )
@@ -97,18 +98,16 @@ export const fetchCartProducts = createAsyncThunk(
   async (_, thunkAPI) => {
     try {
       const response = await axios.get('http://localhost:8000/api/v1/cart');
+      
       const cartItems = response.data.data.cartItems;
       const totalCartPrice = response.data.data.totalCartPrice;
 
-      const enrichedCartItems = await Promise.all(
-        cartItems.map(async (item: any) => {
-          const productDetails = await axios.get(`http://localhost:8000/api/v1/products/${item.product}`);
-          return { ...item, product: productDetails.data.data };
-        })
-      );
-
+      console.log({
+        cartItems: cartItems,
+        totalCartPrice,
+      })
       return {
-        cartItems: enrichedCartItems,
+        cartItems: cartItems,
         totalCartPrice,
       };
     } catch (error: any) {
@@ -117,30 +116,23 @@ export const fetchCartProducts = createAsyncThunk(
   }
 );
 
+// In your thunk.ts
 export const updateCartItemQuantity = createAsyncThunk(
-  'Cart/updateCartItemQuantity',
+  'cart/updateCartItemQuantity',
   async (payload: { quantity: number, itemId: string }, thunkAPI) => {
     try {
-      const response = await axios.put(`http://localhost:8000/api/v1/cart/${payload.itemId}`, {
-        quantity: payload.quantity,
-      });
-
-      const cartItems = response.data.data.cartItems;
-      const totalCartPrice = response.data.data.totalCartPrice;
-
-      const enrichedCartItems = await Promise.all(
-        cartItems.map(async (item: any) => {
-          const productDetails = await axios.get(`http://localhost:8000/api/v1/products/${item.product}`);
-          return { ...item, product: productDetails.data.data };
-        })
+      const response = await axios.put(
+        `http://localhost:8000/api/v1/cart/${payload.itemId}`,
+        { quantity: payload.quantity }
       );
-
+      
       return {
-        cartItems: enrichedCartItems,
-        totalCartPrice,
+        updatedItem: response.data.data.updatedItem,
+        cartItems: response.data.data.cartItems,
+        totalCartPrice: response.data.data.totalCartPrice
       };
     } catch (error: any) {
-      return thunkAPI.rejectWithValue(error.response?.data || error.message);
+      return thunkAPI.rejectWithValue(error.response?.data?.message || 'Update failed');
     }
   }
 );
@@ -149,21 +141,11 @@ export const removeFromCart = createAsyncThunk(
   'Cart/removeFromCart',
   async (payload: { itemId: string }, thunkAPI) => {
     try {
-      const response = await axios.delete(`http://localhost:8000/api/v1/cart/${payload.itemId}`);
-      const cartItems = response.data.data.cartItems;
-      const totalCartPrice = response.data.data.totalCartPrice;
-
-      const enrichedCartItems = await Promise.all(
-        cartItems.map(async (item: any) => {
-          const productDetails = await axios.get(`http://localhost:8000/api/v1/products/${item.product}`);
-          return { ...item, product: productDetails.data.data };
-        })
+      const response = await axios.delete(
+        `http://localhost:8000/api/v1/cart/${payload.itemId}`
       );
-
-      return {
-        cartItems: enrichedCartItems,
-        totalCartPrice,
-      };
+      const totalCartPrice = response.data.data.totalCartPrice;
+      return { id: payload.itemId, totalCartPrice };
     } catch (error: any) {
       return thunkAPI.rejectWithValue(error.response?.data || error.message);
     }

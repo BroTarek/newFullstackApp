@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '@/redux/store';
-import { selectSpecificProduct } from '@/redux/productsSlice';
+// import { selectSpecificProduct } from '@/redux/productsSlice';
 import { addProductToWishList, getSpecificProduct } from '@/redux/thunk';
 import { StarRating } from './StarRating';
 

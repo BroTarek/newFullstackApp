@@ -1,173 +1,166 @@
-
-import { createSelector, createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { AppThunk } from "@/redux/store";
-import axios from "axios";
-import { Product, ProductsState, RangeQuery } from '@/types'
-import build from "next/dist/build";
-import { getSpecificProduct } from "./thunk";
-// Types
-const initialState: ProductsState = {
-
-  SpecificProduct:{},
-  allProducts: [],
-  filteredProducts: [],
-  paginatedProducts: [],
-  createdProduct: null,
-  deletedProduct: null,
-  updatedProduct: null,
-
-  searchKeywords: '',
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import React from "react";
+import { InitialState, Product, PaginationResult, RangeQueries } from "@/types";
+import { fetchProducts } from "./ProductThunk";
+import { RootState } from '@/redux/store'
+const initialState: InitialState = {
+  AllProducts: [],
+  Categoryname:'',
+  PaginationResult: {
+    currentPage: 1,
+    limit: 5,
+    next: null,
+    numberOfPages: 1,
+  },
+  searchKeywords: "",
   sorting: [],
   rangeQueries: [],
-  currentPage: 1,
-  itemsPerPage: 50,
+  Status: 'idle',
+  Error: ''
+}
+export const AllProductsGetter = (state: RootState) => state.Product.AllProducts
+export const SortingGetter = (state: RootState) => state.Product.sorting
+export const FilteredProducts = (state: RootState) => {
+  let FilteredProducts = state.Product.AllProducts
+    .filter((p: Product) =>
+      p.category.name.toLowerCase() === state.Product.Categoryname.toLowerCase()
+    );
 
-  paginationResult: null,
-  status: 'idle',
-  error: null
+  if (state.Product.searchKeywords !== '') {
+    FilteredProducts = FilteredProducts.filter((p: Product) => 
+      p.description.includes(state.Product.searchKeywords) ||
+      p.title.includes(state.Product.searchKeywords)
+    );
+  }
+
+  if (state.Product.rangeQueries.length > 0) {
+    FilteredProducts = FilteredProducts.filter((p: Product) =>
+      state.Product.rangeQueries.every((RQ: RangeQueries) => {
+        const { field, operator, value } = RQ;
+        const ProductField = field as keyof Product;
+        const fieldValue = p[ProductField] as number;
+
+        switch (operator) {
+          case "gt": return fieldValue > value;
+          case "gte": return fieldValue >= value;
+          case "lt": return fieldValue < value;
+          case "lte": return fieldValue <= value;
+          default: return true;
+        }
+      })
+    );
+  }
+
+  if (state.Product.sorting.length > 0) {
+    FilteredProducts = FilteredProducts.slice().sort((a, b) => {
+      for (let key of state.Product.sorting) {
+        let desc = false;
+        let field = key;
+
+        if (key.startsWith("-")) {
+          desc = true;
+          field = key.slice(1);
+        }
+
+        let diff = 0;
+        const aVal = a[field as keyof Product];
+        const bVal = b[field as keyof Product];
+
+        if (typeof aVal === "number" && typeof bVal === "number") {
+          diff = desc ? bVal - aVal : aVal - bVal;
+        } else if (typeof aVal === "string" && typeof bVal === "string") {
+          diff = desc ? bVal.localeCompare(aVal) : aVal.localeCompare(bVal);
+        }
+
+        if (diff !== 0) return diff;
+      }
+      return 0;
+    });
+  }
+
+  return FilteredProducts;
 };
 
-// Selectors
-export const selectAllProducts = (state: { products: ProductsState }) => state.products.allProducts;
-export const selectSpecificProduct = (state:any) => state.products.SpecificProduct;
-export const selectSearchKeywords = (state: { products: ProductsState }) => state.products.searchKeywords;
-export const selectSorting = (state: { products: ProductsState }) => state.products.sorting;
-export const selectRangeQueries = (state: { products: ProductsState }) => state.products.rangeQueries;
-export const selectItemsPerPage = (state: { products: ProductsState }) => state.products.itemsPerPage;
-export const selectProductsStatus = (state: { products: ProductsState }) => state.products.status;
-
-export const selectPaginationResult = (state: { products: ProductsState }) =>
-  state.products.paginationResult;
-
-export const selectCurrentPage = (state: { products: ProductsState }) =>
-  state.products.currentPage;
-
-export const selectTotalPages = (state: { products: ProductsState }) =>
-  state.products.paginationResult?.numberOfPages || 1;
 
 
-// Slice
-const productsSlice = createSlice({
-  name: "products",
+const productSlice = createSlice({
+  name: "Products",
   initialState,
   reducers: {
-    resetCreatedProduct: (state) => {
-      state.createdProduct = null;
-      state.status = 'idle';
-      state.error = null;
-    },
-    setProducts: (state, action: PayloadAction<Product[]>) => {
-      state.allProducts = action.payload;
-      state.status = 'succeeded';
-    },
-    setPaginationResult: (
-      state,
-      action: PayloadAction<ProductsState["paginationResult"]>
-    ) => {
-      state.paginationResult = action.payload;
-    },
-
+    setCategoryname:(state,action:PayloadAction<string>)=>{state.Categoryname=action.payload},
     clearErrors: (state) => {
-      state.error = null;
+      state.Error = null;
     },
     clearQueries: (state) => {
       state.searchKeywords = '';
       state.sorting = [];
       state.rangeQueries = [];
-      state.currentPage = 1;
+      state.PaginationResult.currentPage = 1;
     },
 
     setSearchKeywords: (state, action: PayloadAction<string>) => {
       state.searchKeywords = action.payload;
-      state.currentPage = 1; // Reset to first page when search changes
+      state.PaginationResult.currentPage = 1; // Reset to first page when search changes
     },
     addSortField: (state, action: PayloadAction<string>) => {
       if (!state.sorting.includes(action.payload)) {
         state.sorting.push(action.payload);
       }
     },
-    removeSortField: (state, action: PayloadAction<string>) => {
-      state.sorting = state.sorting.filter(field => field !== action.payload);
-    },
-    addRangeQuery: (state, action: PayloadAction<RangeQuery>) => {
+   removeSortField: (state, action: PayloadAction<string>) => {
+  state.sorting = state.sorting.filter(
+    field => field.replace(/^-/, "") !== action.payload
+  );
+},
+
+    addRangeQuery: (state, action: PayloadAction<RangeQueries>) => {
       state.rangeQueries.push(action.payload);
     },
-    removeRangeQuery: (state, action: PayloadAction<{ field: string, rangeIdentifier: string }>) => {
+    removeRangeQuery: (state, action: PayloadAction<RangeQueries>) => {
       state.rangeQueries = state.rangeQueries.filter(
         q => !(q.field === action.payload.field &&
-          q.rangeIdentifier === action.payload.rangeIdentifier)
+          q.operator === action.payload.operator)
       );
     },
     setCurrentPage: (state, action: PayloadAction<number>) => {
-      state.currentPage = action.payload;
+      state.PaginationResult.currentPage = action.payload;
     },
     setItemsPerPage: (state, action: PayloadAction<number>) => {
-      state.itemsPerPage = action.payload;
-      state.currentPage = 1; // Reset to first page when page size changes
+      state.PaginationResult.limit = action.payload;
+      state.PaginationResult.currentPage = 1; // Reset to first page when page size changes
     },
     setLoading: (state) => {
-      state.status = 'loading';
+      state.Status = 'loading';
     },
     setError: (state, action: PayloadAction<string>) => {
-      state.status = 'failed';
-      state.error = action.payload;
+      state.Status = 'failed';
+      state.Error = action.payload;
+    },
+    setSorting:(state,action:PayloadAction<string[]>)=>{
+      state.sorting=action.payload
     }
   },
-  extraReducers:builder=>
+
+  extraReducers: builder =>
     builder
-     .addCase(getSpecificProduct.pending, (state) => {
-        state.status = 'loading';
-        state.error = '';
-    })
-     .addCase(getSpecificProduct.fulfilled,(state,action: PayloadAction<{}>)=>{
-      state.status = 'succeeded';
-      state.SpecificProduct=action.payload
-    })
-     .addCase(getSpecificProduct.rejected,(state, action) => {
-        state.status = 'failed';
-        state.error = action.payload as string;
-    })
-});
-
-// Thunks
-export const fetchProducts = (): AppThunk => async (dispatch, getState) => {
-  try {
-    dispatch(productsSlice.actions.setLoading());
-
-    const state = getState().products;
-    const params = new URLSearchParams();
-
-    if (state.searchKeywords) params.append('keyword', state.searchKeywords);
-    if (state.currentPage) params.append('page', `${state.currentPage}`);
-    
-    
-    if (state.sorting.length > 0) params.append('sort', state.sorting.join(','));
-    state.rangeQueries.forEach(query => {
-      params.append(`${query.field}[${query.rangeIdentifier}]`, query.value.toString());
-    });
-
-    const response = await axios.get(`http://localhost:8000/api/v1/products/?${params.toString()}`);
-
-    dispatch(productsSlice.actions.setProducts(response.data.data));
-    dispatch(productsSlice.actions.setPaginationResult(response.data.paginationResult));
-  } catch (error: any) {
-    dispatch(productsSlice.actions.setError(error.response?.data?.message || 'Failed to fetch products'));
-  }
-};
+      .addCase(fetchProducts.pending, (state) => {
+        state.Status = 'loading'
+      })
+      .addCase(fetchProducts.fulfilled, (state,
+        action: PayloadAction<{ AllProducts: Product[], paginationResult: PaginationResult }>) => {
+        state.AllProducts = action.payload.AllProducts
+        state.PaginationResult = action.payload.paginationResult
+      })
+      
 
 
+}
+)
 
+export default productSlice.reducer
 export const {
-  resetCreatedProduct,
-  clearErrors,
-  clearQueries,
-  setSearchKeywords,
+  addRangeQuery,
   addSortField,
   removeSortField,
-  addRangeQuery,
-  removeRangeQuery,
-  setCurrentPage,
-  setItemsPerPage,setPaginationResult,
-} = productsSlice.actions;
-
-export default productsSlice.reducer;
+  removeRangeQuery,setSorting,
+setCategoryname } = productSlice.actions;

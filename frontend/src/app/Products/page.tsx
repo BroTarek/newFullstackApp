@@ -1,13 +1,9 @@
 'use client';
 
-import AddProductsClient from '@/components/AddProductsClient';
-import { Provider } from 'react-redux';
-import { store } from '@/redux/store';
+import ProductsPage from '@/components/ProductsPage';
 
-export default function CategorizedProducts({ params }: { params: { categoryId: string } }) {
+export default function CategorizedProducts() {
   return (
-    <Provider store={store}>
-      <AddProductsClient params={params} />
-    </Provider>
+    <ProductsPage />
   );
 }

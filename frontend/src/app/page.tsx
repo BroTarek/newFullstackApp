@@ -1,19 +1,10 @@
 "use client"
 import React from 'react'
-import { Provider } from 'react-redux';
-import { store } from '@/redux/store'; // Adjust path if needed
 
-import SignUpPage from './SignUpPage/page'
+import SignUpPage from './sign-up/page'
 const page = () => {
   return (
-    <>
-    <Provider store={store}>
-     
-       <SignUpPage/>
-    </Provider>
-    </>
-    
-    
+    <SignUpPage />
   )
 }
 

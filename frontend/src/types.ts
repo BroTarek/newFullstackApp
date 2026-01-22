@@ -1,46 +1,61 @@
+export interface Category {
+  _id: string;
+  name: string;
+  image: string;
+}
 
-export interface RangeQuery {
-  field: string;
-  value: number;
-  rangeIdentifier: 'lt' | 'lte' | 'gt' | 'gte';
+export interface SubCategory {
+  _id: string;
+  name: string;
+  category: string;
+}
+
+export interface Brand {
+  _id: string;
+  name: string;
+  image: string;
 }
 
 export interface Product {
-  id: string;
+  _id: string;
   title: string;
-  category: string;
-  imageCover:string;
+  description: string;
+  quantity: number;
+  sold: number;
   price: number;
-  rating: number;
-  ratingsQuantity:number;
-  ratingsAverage:number;
-  sold:number;
-  // Add other product fields as needed
+  ratingsAverage: number;
+  ratingsQuantity: number;
+  imageCover: string;
+  images: string[];
+  category: Category;
+  colors: string[];
+  brand?: Brand;
+  slug: string;
+  createdAt?: string;
+  updatedAt?: string;
+  subcategories?: any;
 }
 
-export interface ProductsState {
-  SpecificProduct:{},
-  allProducts: Product[];
-  filteredProducts: Product[];
-  paginatedProducts: Product[];
-  createdProduct: Product | null;
-  deletedProduct: string | null;
-  updatedProduct: Product | null;
-  paginationResult: {
+export type PaginationResult = {
   currentPage: number;
   limit: number;
+  next: any;
   numberOfPages: number;
-  next?: number;
-  prev?: number;
-} | null;
+};
 
+export type RangeQueries = {
+  field: string;
+  operator: 'gt' | 'gte' | 'lt' | 'lte';
+  value: number;
+};
+
+export interface InitialState {
+  AllProducts: Product[];
+  Categoryname: string;
+  PaginationResult: PaginationResult;
+  Status: 'idle' | 'loading' | 'fulfilled' | 'failed';
   searchKeywords: string;
   sorting: string[];
-  rangeQueries: RangeQuery[];
-  currentPage: number;
-  itemsPerPage: number;
-  
-  status: 'idle' | 'loading' | 'succeeded' | 'failed';
-  error: string | null;
+  rangeQueries: RangeQueries[];
+  Error: any;
 }
-
